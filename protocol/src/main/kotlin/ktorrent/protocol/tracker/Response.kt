@@ -29,10 +29,8 @@ sealed class Response : BEncodable {
                                 ?: throw MappingException("Failed to read interval"),
                         minInterval = (it["min interval"] as? BInteger)?.value,
                         trackerId = (it["tracker id"] as? BByteString)?.value,
-                        seeders = (it["complete"] as? BInteger)?.value
-                                ?: throw MappingException("Failed to read seeder count"),
-                        leechers = (it["incomplete"] as? BInteger)?.value
-                                ?: throw MappingException("Failed to read leecher count"),
+                        seeders = (it["complete"] as? BInteger)?.value,
+                        leechers = (it["incomplete"] as? BInteger)?.value,
                         peers = it["peers"]?.let {
                             when (it) {
                                 is BList -> it.map {
@@ -42,7 +40,7 @@ sealed class Response : BEncodable {
                                 is BByteString -> it.value.split(6).map {
                                     Peer(
                                             ip = Inet4Address.getByAddress(it.sliceArray(0 until 4)),
-                                            port = ByteBuffer.wrap(it.sliceArray(4 until 6)).int
+                                            port = ByteBuffer.wrap(it.sliceArray(4 until 6)).char.toInt()
                                     )
                                 }
                                 else -> throw MappingException("Failed to read peer list")
@@ -78,19 +76,19 @@ class Success(val warningMessage: String? = null,
               val interval: Long,
               val minInterval: Long? = null,
               val trackerId: ByteArray? = null,
-              val seeders: Long,
-              val leechers: Long,
+              val seeders: Long? = null,
+              val leechers: Long? = null,
               val peers: List<Peer>) : Response() {
 
     override fun toDictionary() = BDictionary(
             "interval" to BInteger(interval),
-            "complete" to BInteger(seeders),
-            "incomplete" to BInteger(leechers),
             "peers" to BList(peers)
     ).apply {
         warningMessage?.let { this["warning message"] = BByteString(it) }
         minInterval?.let { this["min interval"] = BInteger(it) }
         trackerId?.let { this["trackerid"] = BByteString(it) }
+        seeders?.let { this["complete"] = BInteger(it) }
+        leechers?.let { this["incomplete"] = BInteger(it) }
     }
 
     override fun equals(other: Any?): Boolean {
@@ -115,8 +113,8 @@ class Success(val warningMessage: String? = null,
         result = 31 * result + interval.hashCode()
         result = 31 * result + (minInterval?.hashCode() ?: 0)
         result = 31 * result + (trackerId?.let { Arrays.hashCode(it) } ?: 0)
-        result = 31 * result + seeders.hashCode()
-        result = 31 * result + leechers.hashCode()
+        result = 31 * result + (seeders?.hashCode() ?: 0)
+        result = 31 * result + (leechers?.hashCode() ?: 0)
         result = 31 * result + peers.hashCode()
         return result
     }
