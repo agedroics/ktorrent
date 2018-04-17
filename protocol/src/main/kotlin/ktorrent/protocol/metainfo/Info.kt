@@ -6,27 +6,23 @@ import ktorrent.protocol.split
 import java.io.OutputStream
 
 sealed class Info(val pieceLength: Long,
-                  val pieceHashes: List<ByteArray>,
+                  val pieces: List<ByteArray>,
                   val private: Boolean? = null,
                   val original: BDictionary = BDictionary()) : BEncodable {
 
-    protected open fun toBDictionary(): BDictionary {
-        val dictionary = BDictionary(original)
-        val pieces = ByteArray(pieceHashes.size * 20)
-        pieceHashes.forEachIndexed { i, bytes ->
-            System.arraycopy(bytes, 0, pieces, i * 20, 20)
+    protected open fun toBDictionary() = BDictionary(original).apply {
+        val pieceArray = ByteArray(pieces.size * 20)
+        pieces.forEachIndexed { i, bytes ->
+            System.arraycopy(bytes, 0, pieceArray, i * 20, 20)
         }
-        dictionary += mapOf(
+        this += mapOf(
                 "piece length" to BInteger(pieceLength),
-                "pieces" to BByteString(pieces)
+                "pieces" to BByteString(pieceArray)
         )
-        private?.let { dictionary["private"] = BInteger(if (it) 1 else 0) }
-        return dictionary
+        private?.let { this["private"] = BInteger(if (it) 1 else 0) }
     }
 
-    override fun write(outputStream: OutputStream) {
-        toBDictionary().write(outputStream)
-    }
+    override fun write(outputStream: OutputStream) = toBDictionary().write(outputStream)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -35,7 +31,7 @@ sealed class Info(val pieceLength: Long,
         other as Info
 
         if (pieceLength != other.pieceLength) return false
-        if (pieceHashes != other.pieceHashes) return false
+        if (pieces != other.pieces) return false
         if (private != other.private) return false
         if (original != other.original) return false
 
@@ -44,7 +40,7 @@ sealed class Info(val pieceLength: Long,
 
     override fun hashCode(): Int {
         var result = pieceLength.hashCode()
-        result = 31 * result + pieceHashes.hashCode()
+        result = 31 * result + pieces.hashCode()
         result = 31 * result + (private?.hashCode() ?: 0)
         result = 31 * result + original.hashCode()
         return result
@@ -55,17 +51,15 @@ sealed class Info(val pieceLength: Long,
         internal fun read(dictionary: BDictionary): Info {
             val pieceLength = (dictionary["piece length"] as? BInteger)?.value
                     ?: throw MappingException("Failed to read piece length")
-
-            val pieceHashes = (dictionary["pieces"] as? BByteString)?.value?.split(20)
+            val pieces = (dictionary["pieces"] as? BByteString)?.value?.split(20)
                     ?: throw MappingException("Failed to read piece hashes")
-
             val private = (dictionary["private"] as? BInteger)?.value?.equals(1L)
-            val name = (dictionary["name"] as? BByteString)?.string
+            val name = (dictionary["name"] as? BByteString)?.string()
 
             return when {
                 dictionary.containsKey("files") -> MultiFileInfo(
                         pieceLength = pieceLength,
-                        pieceHashes = pieceHashes,
+                        pieces = pieces,
                         private = private,
                         directoryName = name ?: throw MappingException("Failed to read directory name"),
                         files = (dictionary["files"] as? BList)?.map {
@@ -76,12 +70,12 @@ sealed class Info(val pieceLength: Long,
                 )
                 else -> SingleFileInfo(
                         pieceLength = pieceLength,
-                        pieceHashes = pieceHashes,
+                        pieces = pieces,
                         private = private,
                         name = name ?: throw MappingException("Failed to read file name"),
                         length = (dictionary["length"] as? BInteger)?.value
                                 ?: throw MappingException("Failed to read file length"),
-                        md5Sum = (dictionary["md5sum"] as? BByteString)?.string,
+                        md5Sum = (dictionary["md5sum"] as? BByteString)?.string(),
                         original = dictionary
                 )
             }
@@ -90,23 +84,21 @@ sealed class Info(val pieceLength: Long,
 }
 
 class SingleFileInfo(pieceLength: Long,
-                     pieceHashes: List<ByteArray>,
+                     pieces: List<ByteArray>,
                      private: Boolean? = null,
                      val name: String,
                      val length: Long,
                      val md5Sum: String? = null,
                      original: BDictionary = BDictionary())
 
-    : Info(pieceLength, pieceHashes, private, original) {
+    : Info(pieceLength, pieces, private, original) {
 
-    override fun toBDictionary(): BDictionary {
-        val dictionary = super.toBDictionary()
-        dictionary += mapOf(
+    override fun toBDictionary() = super.toBDictionary().apply {
+        this += mapOf(
                 "name" to BByteString(name),
                 "length" to BInteger(length)
         )
-        md5Sum?.let { dictionary["md5sum"] = BByteString(it) }
-        return dictionary
+        md5Sum?.let { this["md5sum"] = BByteString(it) }
     }
 
     override fun equals(other: Any?): Boolean {
@@ -133,21 +125,19 @@ class SingleFileInfo(pieceLength: Long,
 }
 
 class MultiFileInfo(pieceLength: Long,
-                    pieceHashes: List<ByteArray>,
+                    pieces: List<ByteArray>,
                     private: Boolean? = null,
                     val directoryName: String,
                     val files: List<FileInfo>,
                     original: BDictionary = BDictionary())
 
-    : Info(pieceLength, pieceHashes, private, original) {
+    : Info(pieceLength, pieces, private, original) {
 
-    override fun toBDictionary(): BDictionary {
-        val dictionary = super.toBDictionary()
-        dictionary += mapOf(
+    override fun toBDictionary() = super.toBDictionary().apply {
+        this += mapOf(
                 "name" to BByteString(directoryName),
                 "files" to BList(files)
         )
-        return dictionary
     }
 
     override fun equals(other: Any?): Boolean {

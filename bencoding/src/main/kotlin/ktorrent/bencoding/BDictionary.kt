@@ -5,13 +5,17 @@ import java.util.*
 
 class BDictionary : TreeMap<String, BEncodable>, BEncodable {
 
-    constructor() : super()
+    constructor()
+
+    constructor(vararg pairs: Pair<String, BEncodable>) {
+        putAll(pairs)
+    }
 
     constructor(map: Map<String, BEncodable>) : super(map)
 
-    override fun write(outputStream: OutputStream) {
-        outputStream.write('d'.toInt())
-        forEach { k, v -> BByteString(k).write(outputStream); v.write(outputStream) }
-        outputStream.write('e'.toInt())
+    override fun write(outputStream: OutputStream) = outputStream.run {
+        write('d'.toInt())
+        forEach { k, v -> BByteString(k).write(this); v.write(this) }
+        write('e'.toInt())
     }
 }

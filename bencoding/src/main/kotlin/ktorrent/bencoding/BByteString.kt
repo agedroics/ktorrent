@@ -1,18 +1,19 @@
 package ktorrent.bencoding
 
 import java.io.OutputStream
+import java.nio.charset.Charset
 import java.util.*
 
 data class BByteString(val value: ByteArray) : BEncodable {
 
-    val string = value.toString(Charsets.UTF_8)
+    constructor(string: String, charset: Charset = Charsets.UTF_8) : this(string.toByteArray(charset))
 
-    constructor(string: String): this(string.toByteArray())
+    fun string(charset: Charset = Charsets.UTF_8) = String(value, charset)
 
-    override fun write(outputStream: OutputStream) {
-        outputStream.write(value.size.toString().toByteArray(Charsets.ISO_8859_1))
-        outputStream.write(':'.toInt())
-        outputStream.write(value)
+    override fun write(outputStream: OutputStream) = outputStream.run {
+        write(value.size.toString().toByteArray(Charsets.ISO_8859_1))
+        write(':'.toInt())
+        write(value)
     }
 
     override fun equals(other: Any?): Boolean {

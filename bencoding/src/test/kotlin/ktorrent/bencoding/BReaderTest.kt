@@ -72,7 +72,7 @@ class BReaderTest {
 
     @Test
     fun testListWithByteStrings() {
-        val list = BList(listOf(BByteString("spam"), BByteString("eggs")))
+        val list = BList(BByteString("spam"), BByteString("eggs"))
         assertEquals(list, BReader("l4:spam4:eggse".byteInputStream()).read())
     }
 
@@ -83,10 +83,10 @@ class BReaderTest {
 
     @Test
     fun testDictionaryWithByteStrings() {
-        val dictionary = BDictionary(mapOf(
+        val dictionary = BDictionary(
                 "spam" to BByteString("eggs"),
                 "cow" to BByteString("moo")
-        ))
+        )
         assertEquals(dictionary, BReader("d3:cow3:moo4:spam4:eggse".byteInputStream()).read())
     }
 }

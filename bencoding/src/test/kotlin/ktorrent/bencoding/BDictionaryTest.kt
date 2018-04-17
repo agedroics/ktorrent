@@ -12,10 +12,10 @@ class BDictionaryTest {
 
     @Test
     fun testOrder() {
-        val dictionary = BDictionary(mapOf(
+        val dictionary = BDictionary(
                 "spam" to BByteString("eggs"),
                 "cow" to BByteString("moo")
-        ))
+        )
         assertEquals("d3:cow3:moo4:spam4:eggse", dictionary.encode().toString(Charsets.UTF_8))
     }
 }

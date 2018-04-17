@@ -1,5 +1,6 @@
 package ktorrent.protocol
 
+import java.net.URLEncoder
 import java.security.MessageDigest
 
 fun ByteArray.split(chunkSize: Int) = (0 until size / chunkSize).map {
@@ -12,13 +13,4 @@ fun ByteArray.sha1(): ByteArray {
     return digest.digest()
 }
 
-fun ByteArray.toHexString(): String {
-    val stringBuilder = StringBuilder(size * 2)
-    forEach {
-        val value = it.toInt() % 0xFF
-        stringBuilder.append(HEX_CHARS[(value ushr 4) and 0x0F]).append(HEX_CHARS[value and 0x0F])
-    }
-    return stringBuilder.toString()
-}
-
-private val HEX_CHARS = "0123456789ABCDEF"
+fun ByteArray.urlEncode(): String = URLEncoder.encode(String(this, Charsets.ISO_8859_1), Charsets.ISO_8859_1)

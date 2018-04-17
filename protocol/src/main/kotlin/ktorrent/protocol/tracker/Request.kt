@@ -1,7 +1,11 @@
 package ktorrent.protocol.tracker
 
+import ktorrent.protocol.urlEncode
 import java.io.BufferedInputStream
-import java.net.*
+import java.net.HttpURLConnection
+import java.net.InetAddress
+import java.net.URL
+import java.net.URLEncoder
 import java.util.*
 
 data class Request(val infoHash: ByteArray,
@@ -16,41 +20,38 @@ data class Request(val infoHash: ByteArray,
                    val ip: InetAddress? = null,
                    val numWant: Long? = null,
                    val key: ByteArray? = null,
-                   val trackerId: String? = null) {
+                   val trackerId: ByteArray? = null) {
 
     fun send(announce: URL): Response {
-        val query = StringBuilder()
-        if (!announce.query.isEmpty()) {
-            query.append(announce.query).append("&")
+        val query = StringBuilder().apply {
+            announce.query?.takeIf { it.isNotBlank() }?.let { append(it).append('&') }
+            append("info_hash=").append(infoHash.urlEncode())
+            append("&peer_id=").append(peerId.urlEncode())
+            append("&port=").append(port)
+            append("&uploaded=").append(uploaded)
+            append("&downloaded=").append(downloaded)
+            append("&left=").append(left)
+            append("&compact=").append(if (compact) 1 else 0)
+            append("&no_peer_id=").append(if (noPeerId) 1 else 0)
+            append("&event=").append(event.value)
+            ip?.let { append("&ip=").append(URLEncoder.encode(it.hostAddress, Charsets.UTF_8)) }
+            numWant?.let { append("&numwant=").append(it) }
+            key?.let { append("&key=").append(it.urlEncode()) }
+            trackerId?.let { append("&trackerid=").append(it.urlEncode()) }
         }
-        query.append("info_hash=").append(URLEncoder.encode(String(infoHash, Charsets.ISO_8859_1), Charsets.ISO_8859_1))
-                .append("&peer_id=").append(URLEncoder.encode(String(peerId, Charsets.ISO_8859_1), Charsets.ISO_8859_1))
-                .append("&port=").append(port)
-                .append("&uploaded=").append(uploaded)
-                .append("&downloaded=").append(downloaded)
-                .append("&left=").append(left)
-                .append("&compact=").append(if (compact) 1 else 0)
-                .append("&no_peer_id=").append(if (noPeerId) 1 else 0)
-                .append("&event=").append(event.value)
-        ip?.let { query.append("&ip=").append(URLEncoder.encode(it.hostAddress, Charsets.ISO_8859_1)) }
-        numWant?.let { query.append("&numwant=").append(it) }
-        key?.let { query.append("&key=").append(URLEncoder.encode(String(it, Charsets.ISO_8859_1), Charsets.ISO_8859_1)) }
-        trackerId?.let { query.append("&trackerid=").append(URLEncoder.encode(it, Charsets.ISO_8859_1)) }
 
-        val url = URI(
-                announce.protocol,
-                null,
-                announce.host,
-                announce.port,
-                announce.path,
-                query.toString(),
-                null
-        ).toURL()
+        val url = URL(StringBuilder().apply {
+            append(announce.protocol).append(':')
+            announce.authority?.let { append("//").append(it) }
+            append(announce.path)
+            append('?').append(query)
+            announce.ref?.let { append('#').append(it) }
+        }.toString())
 
         val conn = url.openConnection() as HttpURLConnection
         conn.requestMethod = "GET"
-        try {
-            return Response.read(BufferedInputStream(conn.inputStream))
+        return try {
+            Response.read(BufferedInputStream(conn.inputStream))
         } finally {
             conn.disconnect()
         }
@@ -74,7 +75,7 @@ data class Request(val infoHash: ByteArray,
         if (ip != other.ip) return false
         if (numWant != other.numWant) return false
         if (!Arrays.equals(key, other.key)) return false
-        if (trackerId != other.trackerId) return false
+        if (!Arrays.equals(trackerId, other.trackerId)) return false
 
         return true
     }
@@ -92,7 +93,7 @@ data class Request(val infoHash: ByteArray,
         result = 31 * result + (ip?.hashCode() ?: 0)
         result = 31 * result + (numWant?.hashCode() ?: 0)
         result = 31 * result + (key?.let { Arrays.hashCode(it) } ?: 0)
-        result = 31 * result + (trackerId?.hashCode() ?: 0)
+        result = 31 * result + (trackerId?.let { Arrays.hashCode(it) } ?: 0)
         return result
     }
 }

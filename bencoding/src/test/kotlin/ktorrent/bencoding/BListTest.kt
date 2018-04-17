@@ -12,7 +12,7 @@ class BListTest {
 
     @Test
     fun testWithByteStrings() {
-        val list = BList(listOf(BByteString("spam"), BByteString("eggs")))
+        val list = BList(BByteString("spam"), BByteString("eggs"))
         assertEquals("l4:spam4:eggse", list.encode().toString(Charsets.UTF_8))
     }
 }

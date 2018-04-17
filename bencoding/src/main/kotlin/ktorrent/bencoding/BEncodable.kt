@@ -7,9 +7,8 @@ interface BEncodable {
 
     fun write(outputStream: OutputStream)
 
-    fun encode(): ByteArray {
-        val outputStream = ByteArrayOutputStream()
-        write(outputStream)
-        return outputStream.toByteArray()
+    fun encode(): ByteArray = ByteArrayOutputStream().run {
+        write(this)
+        toByteArray()
     }
 }

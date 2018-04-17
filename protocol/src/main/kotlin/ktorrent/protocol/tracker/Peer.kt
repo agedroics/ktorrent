@@ -13,15 +13,12 @@ data class Peer(val id: ByteArray? = null,
                 val ip: InetAddress,
                 val port: Int) : BEncodable {
 
-    override fun write(outputStream: OutputStream) {
-        val dictionary = BDictionary(mapOf(
-                "ip" to BByteString(ip.hostAddress),
-                "port" to BInteger(port.toLong())
-        ))
-        id?.let {
-            dictionary["peer id"] = BByteString(it)
-        }
-        dictionary.write(outputStream)
+    override fun write(outputStream: OutputStream) = BDictionary(
+            "ip" to BByteString(ip.hostAddress),
+            "port" to BInteger(port.toLong())
+    ).run {
+        id?.let { this["peer id"] = BByteString(it) }
+        write(outputStream)
     }
 
     override fun equals(other: Any?): Boolean {
@@ -48,7 +45,7 @@ data class Peer(val id: ByteArray? = null,
 
         internal fun read(dictionary: BDictionary) = Peer(
                 id = (dictionary["peer id"] as? BByteString)?.value,
-                ip = (dictionary["ip"] as? BByteString)?.string?.let { InetAddress.getByName(it) }
+                ip = (dictionary["ip"] as? BByteString)?.string()?.let { InetAddress.getByName(it) }
                         ?: throw MappingException("Failed to read peer IP address"),
                 port = (dictionary["port"] as? BInteger)?.value?.toInt()
                         ?: throw MappingException("Failed to read peer port")

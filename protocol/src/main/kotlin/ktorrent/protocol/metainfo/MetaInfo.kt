@@ -14,24 +14,22 @@ data class MetaInfo(val info: Info,
                     val creationDate: Instant? = null,
                     val comment: String? = null,
                     val createdBy: String? = null,
-                    val piecesEncoding: String? = null,
+                    val encoding: String? = null,
                     val original: BDictionary = BDictionary()) : BEncodable {
 
-    override fun write(outputStream: OutputStream) {
-        val dictionary = BDictionary(original)
-        dictionary += mapOf(
-                "info" to info,
-                "announce" to BByteString(announce.toString())
+    override fun write(outputStream: OutputStream) = BDictionary(original).run {
+        this += mapOf(
+            "info" to info,
+            "announce" to BByteString(announce.toString())
         )
-        announceList?.map {
-            BList(it.map { BByteString(it.toString()) })
-        }?.let { BList(it) }?.write(outputStream)
-        creationDate?.let { dictionary["creation date"] = BInteger(it.epochSecond) }
-        comment?.let { dictionary["comment"] = BByteString(it) }
-        createdBy?.let { dictionary["created by"] = BByteString(it) }
-        piecesEncoding?.let { dictionary["encoding"] = BByteString(it) }
-        dictionary.write(outputStream)
+        announceList?.map { BList(it.map { BByteString(it.toString()) }) }?.let { this["announce-list"] = BList(it) }
+        creationDate?.let { this["creation date"] = BInteger(it.epochSecond) }
+        comment?.let { this["comment"] = BByteString(it) }
+        createdBy?.let { this["created by"] = BByteString(it) }
+        encoding?.let { this["encoding"] = BByteString(it) }
+        write(outputStream)
     }
+
 
     companion object {
 
@@ -39,7 +37,7 @@ data class MetaInfo(val info: Info,
             MetaInfo(
                     info = (it["info"] as? BDictionary)?.let { Info.read(it) }
                             ?: throw MappingException("Failed to read torrent info"),
-                    announce = (it["announce"] as? BByteString)?.string?.let {
+                    announce = (it["announce"] as? BByteString)?.string()?.let {
                         try {
                             URL(it)
                         } catch (e: MalformedURLException) {
@@ -48,7 +46,7 @@ data class MetaInfo(val info: Info,
                     } ?: throw MappingException("Failed to read announce URL"),
                     announceList = (it["announce-list"] as? BList)?.map {
                         (it as? BList)?.map {
-                            (it as? BByteString)?.string?.let {
+                            (it as? BByteString)?.string()?.let {
                                 try {
                                     URL(it)
                                 } catch (e: MalformedURLException) {
@@ -58,9 +56,9 @@ data class MetaInfo(val info: Info,
                         } ?: throw MappingException("Malformed announce-list")
                     },
                     creationDate = (it["creation date"] as? BInteger)?.value?.let { Instant.ofEpochSecond(it) },
-                    comment = (it["comment"] as? BByteString)?.string,
-                    createdBy = (it["created by"] as? BByteString)?.string,
-                    piecesEncoding = (it["encoding"] as? BByteString)?.string,
+                    comment = (it["comment"] as? BByteString)?.string(),
+                    createdBy = (it["created by"] as? BByteString)?.string(),
+                    encoding = (it["encoding"] as? BByteString)?.string(),
                     original = it
             )
         } ?: throw MappingException("Failed to read torrent meta info")
