@@ -40,13 +40,13 @@ data class Request(val infoHash: ByteArray,
             trackerId?.let { append("&trackerid=").append(it.urlEncode()) }
         }
 
-        val url = URL(StringBuilder().apply {
+        val url = StringBuilder().apply {
             append(announce.protocol).append(':')
             announce.authority?.let { append("//").append(it) }
             append(announce.path)
             append('?').append(query)
             announce.ref?.let { append('#').append(it) }
-        }.toString())
+        }.let { URL(it.toString()) }
 
         val conn = url.openConnection() as HttpURLConnection
         conn.requestMethod = "GET"

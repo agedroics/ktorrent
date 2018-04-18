@@ -9,7 +9,7 @@ data class FileInfo(val length: Long,
                     val md5Sum: String?,
                     val original: BDictionary = BDictionary()) : BEncodable {
 
-    override fun write(outputStream: OutputStream) = BDictionary(original).run {
+    override fun write(outputStream: OutputStream) = with(BDictionary(original)) {
         this += mapOf(
                 "length" to BInteger(length),
                 "path" to BList(path.map { BByteString(it) })

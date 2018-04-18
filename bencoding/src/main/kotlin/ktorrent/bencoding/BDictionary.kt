@@ -13,7 +13,7 @@ class BDictionary : TreeMap<String, BEncodable>, BEncodable {
 
     constructor(map: Map<String, BEncodable>) : super(map)
 
-    override fun write(outputStream: OutputStream) = outputStream.run {
+    override fun write(outputStream: OutputStream) = with(outputStream) {
         write('d'.toInt())
         forEach { k, v -> BByteString(k).write(this); v.write(this) }
         write('e'.toInt())

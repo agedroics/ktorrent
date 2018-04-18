@@ -7,7 +7,7 @@ fun ByteArray.split(chunkSize: Int) = (0 until size / chunkSize).map {
     sliceArray(chunkSize * it until kotlin.math.min(chunkSize * (it + 1), size))
 }
 
-fun ByteArray.sha1() = MessageDigest.getInstance("SHA-1").run {
+fun ByteArray.sha1() = with(MessageDigest.getInstance("SHA-1")) {
     update(this@sha1)
     digest()
 }

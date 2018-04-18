@@ -10,7 +10,7 @@ data class BByteString(val value: ByteArray) : BEncodable {
 
     fun string(charset: Charset = Charsets.UTF_8) = String(value, charset)
 
-    override fun write(outputStream: OutputStream) = outputStream.run {
+    override fun write(outputStream: OutputStream) = with(outputStream) {
         write(value.size.toString().toByteArray(Charsets.ISO_8859_1))
         write(':'.toInt())
         write(value)

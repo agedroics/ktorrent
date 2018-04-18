@@ -10,7 +10,7 @@ class BList : ArrayList<BEncodable>, BEncodable {
 
     constructor(collection: Collection<BEncodable>) : super(collection)
 
-    override fun write(outputStream: OutputStream) = outputStream.run {
+    override fun write(outputStream: OutputStream) = with(outputStream) {
         write('l'.toInt())
         forEach { it.write(this) }
         write('e'.toInt())

@@ -17,7 +17,7 @@ data class MetaInfo(val info: Info,
                     val encoding: String? = null,
                     val original: BDictionary = BDictionary()) : BEncodable {
 
-    override fun write(outputStream: OutputStream) = BDictionary(original).run {
+    override fun write(outputStream: OutputStream) = with(BDictionary(original)) {
         this += mapOf(
             "info" to info,
             "announce" to BByteString(announce.toString())

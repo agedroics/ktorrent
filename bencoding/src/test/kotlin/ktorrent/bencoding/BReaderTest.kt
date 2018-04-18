@@ -8,18 +8,18 @@ class BReaderTest {
 
     @Test
     fun testEmpty() {
-        assertFailsWith(BEncodingException::class, { BReader("".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("".byteInputStream()).read() })
     }
 
     @Test
     fun testInvalid() {
-        assertFailsWith(BEncodingException::class, { BReader("a".byteInputStream()).read() })
-        assertFailsWith(BEncodingException::class, { BReader(":".byteInputStream()).read() })
-        assertFailsWith(BEncodingException::class, { BReader("e".byteInputStream()).read() })
-        assertFailsWith(BEncodingException::class, { BReader("i".byteInputStream()).read() })
-        assertFailsWith(BEncodingException::class, { BReader("l".byteInputStream()).read() })
-        assertFailsWith(BEncodingException::class, { BReader("d".byteInputStream()).read() })
-        assertFailsWith(BEncodingException::class, { BReader("da".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("a".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader(":".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("e".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("i".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("l".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("d".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("da".byteInputStream()).read() })
     }
 
     @Test
@@ -34,11 +34,11 @@ class BReaderTest {
 
     @Test
     fun testInvalidByteString() {
-        assertFailsWith(BEncodingException::class, { BReader("2:a".byteInputStream()).read() })
-        assertFailsWith(BEncodingException::class, { BReader("-1:a".byteInputStream()).read() })
-        assertFailsWith(BEncodingException::class, { BReader(":a".byteInputStream()).read() })
-        assertFailsWith(BEncodingException::class, { BReader("1e:a".byteInputStream()).read() })
-        assertFailsWith(BEncodingException::class, { BReader("6".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("2:a".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("-1:a".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader(":a".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("1e:a".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("6".byteInputStream()).read() })
     }
 
     @Test
@@ -58,11 +58,11 @@ class BReaderTest {
 
     @Test
     fun testInvalidInteger() {
-        assertFailsWith(BEncodingException::class, { BReader("i00e".byteInputStream()).read() })
-        assertFailsWith(BEncodingException::class, { BReader("i01e".byteInputStream()).read() })
-        assertFailsWith(BEncodingException::class, { BReader("i-0e".byteInputStream()).read() })
-        assertFailsWith(BEncodingException::class, { BReader("i1".byteInputStream()).read() })
-        assertFailsWith(BEncodingException::class, { BReader("ie".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("i00e".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("i01e".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("i-0e".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("i1".byteInputStream()).read() })
+        assertFailsWith(InvalidBEncodingException::class, { BReader("ie".byteInputStream()).read() })
     }
 
     @Test

@@ -18,12 +18,9 @@ sealed class Response : BEncodable {
     companion object {
 
         fun read(inputStream: InputStream) = (BReader(inputStream).read() as? BDictionary)?.let {
-            when {
-                it.containsKey("failure reason") -> Failure(
-                        (it["failure reason"] as? BByteString)?.string()
-                                ?: throw MappingException("Failed to read failure reason")
-                )
-                else -> Success(
+            val failureReason = it["failure reason"]
+            when (failureReason) {
+                null -> Success(
                         warningMessage = (it["waning message"] as? BByteString)?.string(),
                         interval = (it["interval"] as? BInteger)?.value
                                 ?: throw MappingException("Failed to read interval"),
@@ -46,6 +43,10 @@ sealed class Response : BEncodable {
                                 else -> throw MappingException("Failed to read peer list")
                             }
                         } ?: throw MappingException("Failed to read peer list")
+                )
+                else -> Failure(
+                        (failureReason as? BByteString)?.string()
+                                ?: throw MappingException("Failed to read failure reason")
                 )
             }
         } ?: throw MappingException("Failed to read tracker response")
