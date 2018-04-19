@@ -2,49 +2,27 @@ package ktorrent.protocol.metainfo
 
 import ktorrent.bencoding.*
 import ktorrent.protocol.MappingException
-import ktorrent.protocol.split
+import ktorrent.protocol.utils.split
 import java.io.OutputStream
 
 sealed class Info(val pieceLength: Long,
                   val pieces: List<ByteArray>,
-                  val private: Boolean? = null,
-                  val original: BDictionary = BDictionary()) : BEncodable {
+                  val private: Boolean? = null) : BEncodable {
 
-    protected open fun toBDictionary() = BDictionary(original).apply {
+    protected open fun toBDictionary(): BDictionary {
         val pieceArray = ByteArray(pieces.size * 20)
         pieces.forEachIndexed { i, bytes ->
             System.arraycopy(bytes, 0, pieceArray, i * 20, 20)
         }
-        this += mapOf(
+        val dictionary = BDictionary(
                 "piece length" to BInteger(pieceLength),
                 "pieces" to BByteString(pieceArray)
         )
-        private?.let { this["private"] = BInteger(if (it) 1 else 0) }
+        private?.let { dictionary["private"] = BInteger(if (it) 1 else 0) }
+        return dictionary
     }
 
     override fun write(outputStream: OutputStream) = toBDictionary().write(outputStream)
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as Info
-
-        if (pieceLength != other.pieceLength) return false
-        if (pieces != other.pieces) return false
-        if (private != other.private) return false
-        if (original != other.original) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = pieceLength.hashCode()
-        result = 31 * result + pieces.hashCode()
-        result = 31 * result + (private?.hashCode() ?: 0)
-        result = 31 * result + original.hashCode()
-        return result
-    }
 
     companion object {
 
@@ -65,8 +43,7 @@ sealed class Info(val pieceLength: Long,
                         files = (dictionary["files"] as? BList)?.map {
                             (it as? BDictionary)?.let { FileInfo.read(it) }
                                     ?: throw MappingException("Failed to read file list")
-                        } ?: throw MappingException("Failed to read file list"),
-                        original = dictionary
+                        } ?: throw MappingException("Failed to read file list")
                 )
                 else -> SingleFileInfo(
                         pieceLength = pieceLength,
@@ -75,8 +52,7 @@ sealed class Info(val pieceLength: Long,
                         name = name ?: throw MappingException("Failed to read file name"),
                         length = (dictionary["length"] as? BInteger)?.value
                                 ?: throw MappingException("Failed to read file length"),
-                        md5Sum = (dictionary["md5sum"] as? BByteString)?.string(),
-                        original = dictionary
+                        md5Sum = (dictionary["md5sum"] as? BByteString)?.string()
                 )
             }
         }
@@ -88,10 +64,9 @@ class SingleFileInfo(pieceLength: Long,
                      private: Boolean? = null,
                      val name: String,
                      val length: Long,
-                     val md5Sum: String? = null,
-                     original: BDictionary = BDictionary())
+                     val md5Sum: String? = null)
 
-    : Info(pieceLength, pieces, private, original) {
+    : Info(pieceLength, pieces, private) {
 
     override fun toBDictionary() = super.toBDictionary().apply {
         this += mapOf(
@@ -100,63 +75,20 @@ class SingleFileInfo(pieceLength: Long,
         )
         md5Sum?.let { this["md5sum"] = BByteString(it) }
     }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-        if (!super.equals(other)) return false
-
-        other as SingleFileInfo
-
-        if (name != other.name) return false
-        if (length != other.length) return false
-        if (md5Sum != other.md5Sum) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = super.hashCode()
-        result = 31 * result + name.hashCode()
-        result = 31 * result + length.hashCode()
-        result = 31 * result + (md5Sum?.hashCode() ?: 0)
-        return result
-    }
 }
 
 class MultiFileInfo(pieceLength: Long,
                     pieces: List<ByteArray>,
                     private: Boolean? = null,
                     val directoryName: String,
-                    val files: List<FileInfo>,
-                    original: BDictionary = BDictionary())
+                    val files: List<FileInfo>)
 
-    : Info(pieceLength, pieces, private, original) {
+    : Info(pieceLength, pieces, private) {
 
     override fun toBDictionary() = super.toBDictionary().apply {
         this += mapOf(
                 "name" to BByteString(directoryName),
                 "files" to BList(files)
         )
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-        if (!super.equals(other)) return false
-
-        other as MultiFileInfo
-
-        if (directoryName != other.directoryName) return false
-        if (files != other.files) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = super.hashCode()
-        result = 31 * result + directoryName.hashCode()
-        result = 31 * result + files.hashCode()
-        return result
     }
 }

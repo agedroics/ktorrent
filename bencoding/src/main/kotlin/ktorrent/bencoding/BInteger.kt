@@ -4,9 +4,7 @@ import java.io.OutputStream
 
 data class BInteger(val value: Long) : BEncodable {
 
-    override fun write(outputStream: OutputStream) = with(outputStream) {
-        write('i'.toInt())
-        write(value.toString().toByteArray(Charsets.ISO_8859_1))
-        write('e'.toInt())
-    }
+    private val bytes = ("i" + value.toString() + "e").toByteArray(Charsets.ISO_8859_1)
+
+    override fun write(outputStream: OutputStream) = outputStream.write(bytes)
 }

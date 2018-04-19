@@ -2,41 +2,41 @@ package ktorrent.protocol.metainfo
 
 import ktorrent.bencoding.*
 import ktorrent.protocol.MappingException
+import ktorrent.protocol.utils.sha1
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.MalformedURLException
 import java.net.URL
 import java.time.Instant
 
-data class MetaInfo(val info: Info,
-                    val announce: URL,
-                    val announceList: List<List<URL>>? = null,
-                    val creationDate: Instant? = null,
-                    val comment: String? = null,
-                    val createdBy: String? = null,
-                    val encoding: String? = null,
-                    val original: BDictionary = BDictionary()) : BEncodable {
+class MetaInfo(val info: Info,
+               val announce: URL,
+               val announceList: List<List<URL>>? = null,
+               val creationDate: Instant? = null,
+               val comment: String? = null,
+               val createdBy: String? = null,
+               val encoding: String? = null) : BEncodable {
 
-    override fun write(outputStream: OutputStream) = with(BDictionary(original)) {
-        this += mapOf(
-            "info" to info,
-            "announce" to BByteString(announce.toString())
+    override fun write(outputStream: OutputStream) {
+        val dictionary = BDictionary(
+                "info" to info,
+                "announce" to BByteString(announce.toString())
         )
-        announceList?.map { BList(it.map { BByteString(it.toString()) }) }?.let { this["announce-list"] = BList(it) }
-        creationDate?.let { this["creation date"] = BInteger(it.epochSecond) }
-        comment?.let { this["comment"] = BByteString(it) }
-        createdBy?.let { this["created by"] = BByteString(it) }
-        encoding?.let { this["encoding"] = BByteString(it) }
-        write(outputStream)
+        announceList?.map { BList(it.map { BByteString(it.toString()) }) }?.let { dictionary["announce-list"] = BList(it) }
+        creationDate?.let { dictionary["creation date"] = BInteger(it.epochSecond) }
+        comment?.let { dictionary["comment"] = BByteString(it) }
+        createdBy?.let { dictionary["created by"] = BByteString(it) }
+        encoding?.let { dictionary["encoding"] = BByteString(it) }
+        dictionary.write(outputStream)
     }
 
 
     companion object {
 
         fun read(inputStream: InputStream) = (BReader(inputStream).read() as? BDictionary)?.let {
+            val infoDictionary = (it["info"] as? BDictionary) ?: throw MappingException("Failed to read torrent info")
             MetaInfo(
-                    info = (it["info"] as? BDictionary)?.let { Info.read(it) }
-                            ?: throw MappingException("Failed to read torrent info"),
+                    info = Info.read(infoDictionary),
                     announce = (it["announce"] as? BByteString)?.string()?.let {
                         try {
                             URL(it)
@@ -58,9 +58,8 @@ data class MetaInfo(val info: Info,
                     creationDate = (it["creation date"] as? BInteger)?.value?.let { Instant.ofEpochSecond(it) },
                     comment = (it["comment"] as? BByteString)?.string(),
                     createdBy = (it["created by"] as? BByteString)?.string(),
-                    encoding = (it["encoding"] as? BByteString)?.string(),
-                    original = it
-            )
-        } ?: throw MappingException("Failed to read torrent meta info")
+                    encoding = (it["encoding"] as? BByteString)?.string()
+            ) to infoDictionary.encode().sha1()
+        } ?: throw MappingException("Failed to read torrent file")
     }
 }

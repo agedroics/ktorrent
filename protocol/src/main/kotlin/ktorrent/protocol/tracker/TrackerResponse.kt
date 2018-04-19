@@ -2,18 +2,17 @@ package ktorrent.protocol.tracker
 
 import ktorrent.bencoding.*
 import ktorrent.protocol.MappingException
-import ktorrent.protocol.split
+import ktorrent.protocol.utils.split
+import ktorrent.protocol.utils.toShort
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.Inet4Address
-import java.nio.ByteBuffer
-import java.util.*
 
-sealed class Response : BEncodable {
+sealed class TrackerResponse : BEncodable {
 
-    protected abstract fun toDictionary(): BDictionary
+    protected abstract fun toBDictionary(): BDictionary
 
-    override fun write(outputStream: OutputStream) = toDictionary().write(outputStream)
+    override fun write(outputStream: OutputStream) = toBDictionary().write(outputStream)
 
     companion object {
 
@@ -37,7 +36,7 @@ sealed class Response : BEncodable {
                                 is BByteString -> it.value.split(6).map {
                                     Peer(
                                             ip = Inet4Address.getByAddress(it.sliceArray(0 until 4)),
-                                            port = ByteBuffer.wrap(it.sliceArray(4 until 6)).char.toInt()
+                                            port = it.sliceArray(4 until 6).toShort()
                                     )
                                 }
                                 else -> throw MappingException("Failed to read peer list")
@@ -53,24 +52,9 @@ sealed class Response : BEncodable {
     }
 }
 
-class Failure(val reason: String) : Response() {
+class Failure(val reason: String) : TrackerResponse() {
 
-    override fun toDictionary() = BDictionary("failure reason" to BByteString(reason))
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as Failure
-
-        if (reason != other.reason) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        return reason.hashCode()
-    }
+    override fun toBDictionary() = BDictionary("failure reason" to BByteString(reason))
 }
 
 class Success(val warningMessage: String? = null,
@@ -79,9 +63,9 @@ class Success(val warningMessage: String? = null,
               val trackerId: ByteArray? = null,
               val seeders: Long? = null,
               val leechers: Long? = null,
-              val peers: List<Peer>) : Response() {
+              val peers: List<Peer>) : TrackerResponse() {
 
-    override fun toDictionary() = BDictionary(
+    override fun toBDictionary() = BDictionary(
             "interval" to BInteger(interval),
             "peers" to BList(peers)
     ).apply {
@@ -90,33 +74,5 @@ class Success(val warningMessage: String? = null,
         trackerId?.let { this["trackerid"] = BByteString(it) }
         seeders?.let { this["complete"] = BInteger(it) }
         leechers?.let { this["incomplete"] = BInteger(it) }
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as Success
-
-        if (warningMessage != other.warningMessage) return false
-        if (interval != other.interval) return false
-        if (minInterval != other.minInterval) return false
-        if (!Arrays.equals(trackerId, other.trackerId)) return false
-        if (seeders != other.seeders) return false
-        if (leechers != other.leechers) return false
-        if (peers != other.peers) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = warningMessage?.hashCode() ?: 0
-        result = 31 * result + interval.hashCode()
-        result = 31 * result + (minInterval?.hashCode() ?: 0)
-        result = 31 * result + (trackerId?.let { Arrays.hashCode(it) } ?: 0)
-        result = 31 * result + (seeders?.hashCode() ?: 0)
-        result = 31 * result + (leechers?.hashCode() ?: 0)
-        result = 31 * result + peers.hashCode()
-        return result
     }
 }
