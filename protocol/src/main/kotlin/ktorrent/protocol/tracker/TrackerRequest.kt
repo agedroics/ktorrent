@@ -2,7 +2,6 @@ package ktorrent.protocol.tracker
 
 import ktorrent.protocol.utils.urlEncode
 import java.io.BufferedInputStream
-import java.net.HttpURLConnection
 import java.net.InetAddress
 import java.net.URL
 import java.net.URLEncoder
@@ -47,12 +46,6 @@ class TrackerRequest(val infoHash: ByteArray,
             announce.ref?.let { append('#').append(it) }
         }.let { URL(it.toString()) }
 
-        val conn = url.openConnection() as HttpURLConnection
-        conn.requestMethod = "GET"
-        return try {
-            TrackerResponse.read(BufferedInputStream(conn.inputStream))
-        } finally {
-            conn.disconnect()
-        }
+        return url.openStream().use { TrackerResponse.read(BufferedInputStream(it)) }
     }
 }

@@ -28,7 +28,7 @@ sealed class Message {
                 5 -> Have(bytes.sliceArray(1..4).toInt())
                 else -> throw PeerProtocolException("Incorrect length for 'have' message")
             }
-            5 -> BitField(BitArray(bytes.sliceArray(1 until bytes.size)))
+            5 -> BitField(BitArray.wrap(bytes.sliceArray(1 until bytes.size)))
             6 -> when (length) {
                 13 -> Request(
                         pieceIndex = bytes.sliceArray(1..4).toInt(),
@@ -111,7 +111,7 @@ class BitField(val bitArray: BitArray) : Message() {
 
     override val bytes: ByteArray
 
-    get() = bitArray.toByteArray().let {
+    get() = bitArray.byteArray.let {
         ByteArray(5 + it.size).apply {
             System.arraycopy((1 + it.size).toByteArray(), 0, this, 0, 4)
             this[4] = 5

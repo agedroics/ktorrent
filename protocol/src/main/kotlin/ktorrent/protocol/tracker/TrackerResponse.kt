@@ -5,21 +5,19 @@ import ktorrent.protocol.MappingException
 import ktorrent.protocol.utils.split
 import ktorrent.protocol.utils.toShort
 import java.io.InputStream
-import java.io.OutputStream
 import java.net.Inet4Address
 
-sealed class TrackerResponse : BEncodable {
-
-    protected abstract fun toBDictionary(): BDictionary
-
-    override fun write(outputStream: OutputStream) = toBDictionary().write(outputStream)
+sealed class TrackerResponse {
 
     companion object {
 
         fun read(inputStream: InputStream) = (BReader(inputStream).read() as? BDictionary)?.let {
-            val failureReason = it["failure reason"]
-            when (failureReason) {
-                null -> Success(
+            when {
+                it.containsKey("failure reason") -> Failure(
+                        reason = (it["failure reason"] as? BByteString)?.string()
+                                ?: throw MappingException("Failed to read failure reason")
+                )
+                else -> Success(
                         warningMessage = (it["waning message"] as? BByteString)?.string(),
                         interval = (it["interval"] as? BInteger)?.value
                                 ?: throw MappingException("Failed to read interval"),
@@ -43,19 +41,12 @@ sealed class TrackerResponse : BEncodable {
                             }
                         } ?: throw MappingException("Failed to read peer list")
                 )
-                else -> Failure(
-                        (failureReason as? BByteString)?.string()
-                                ?: throw MappingException("Failed to read failure reason")
-                )
             }
         } ?: throw MappingException("Failed to read tracker response")
     }
 }
 
-class Failure(val reason: String) : TrackerResponse() {
-
-    override fun toBDictionary() = BDictionary("failure reason" to BByteString(reason))
-}
+class Failure(val reason: String) : TrackerResponse()
 
 class Success(val warningMessage: String? = null,
               val interval: Long,
@@ -63,16 +54,4 @@ class Success(val warningMessage: String? = null,
               val trackerId: ByteArray? = null,
               val seeders: Long? = null,
               val leechers: Long? = null,
-              val peers: List<Peer>) : TrackerResponse() {
-
-    override fun toBDictionary() = BDictionary(
-            "interval" to BInteger(interval),
-            "peers" to BList(peers)
-    ).apply {
-        warningMessage?.let { this["warning message"] = BByteString(it) }
-        minInterval?.let { this["min interval"] = BInteger(it) }
-        trackerId?.let { this["trackerid"] = BByteString(it) }
-        seeders?.let { this["complete"] = BInteger(it) }
-        leechers?.let { this["incomplete"] = BInteger(it) }
-    }
-}
+              val peers: List<Peer>) : TrackerResponse()
