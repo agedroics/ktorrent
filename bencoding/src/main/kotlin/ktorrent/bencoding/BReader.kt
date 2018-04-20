@@ -13,7 +13,6 @@ class BReader(private val inputStream: InputStream) {
         'i' -> readInteger()
         'l' -> readList()
         'd' -> readDictionary()
-        (-1).toChar() -> throw InvalidBEncodingException("Unexpected end of stream")
         else -> throw InvalidBEncodingException("Unexpected symbol '$firstByte' at ${position - 1}")
     }
 
@@ -22,7 +21,6 @@ class BReader(private val inputStream: InputStream) {
         return when {
             readResult == ':' -> BByteString(readBytes(length))
             readResult in '0'..'9' && length != 0 -> readByteString(length * 10 + (readResult - '0'))
-            readResult == (-1).toChar() -> throw InvalidBEncodingException("Unexpected end of stream")
             else -> throw InvalidBEncodingException("Unexpected symbol '$readResult' at ${position - 1}")
         }
     }
@@ -34,7 +32,6 @@ class BReader(private val inputStream: InputStream) {
             readResult in '0'..'9' && (first && !negative || negative && !first || negative && readResult != '0' || value != 0L) ->
                 readInteger(value * 10 + (readResult - '0'), false, negative)
             readResult == '-' && first && !negative -> readInteger(value, true, true)
-            readResult == (-1).toChar() -> throw InvalidBEncodingException("Unexpected end of stream")
             else -> throw InvalidBEncodingException("Unexpected symbol '$readResult' at ${position - 1}")
         }
     }
@@ -51,14 +48,17 @@ class BReader(private val inputStream: InputStream) {
                 dictionary[readByteString(readResult - '0').string()] = read()
                 readDictionary(dictionary)
             }
-            (-1).toChar() -> throw InvalidBEncodingException("Unexpected end of stream")
             else -> throw InvalidBEncodingException("Unexpected symbol '$readResult' at ${position - 1}")
         }
     }
 
     private fun readByte(): Char {
         ++position
-        return inputStream.read().toChar()
+        val readResult = inputStream.read()
+        when (readResult) {
+            -1 -> throw InvalidBEncodingException("Unexpected end of stream")
+            else -> return readResult.toChar()
+        }
     }
 
     private fun readBytes(n: Int): ByteArray {

@@ -7,7 +7,7 @@ plugins {
 
 allprojects {
     group = "ktorrent"
-    version = "1.1"
+    version = "1.0"
 
     repositories {
         jcenter()
