@@ -1,1 +1,1 @@
-include("bencoding", "protocol", "utils")
+include("core")
