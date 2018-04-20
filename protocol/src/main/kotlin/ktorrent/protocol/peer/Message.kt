@@ -4,8 +4,11 @@ import ktorrent.protocol.utils.BitArray
 import ktorrent.protocol.utils.toByteArray
 import ktorrent.protocol.utils.toInt
 import ktorrent.protocol.utils.toShort
+import ktorrent.utils.readByteOrFail
+import ktorrent.utils.readBytesOrFail
 import java.io.InputStream
 import java.io.OutputStream
+import kotlin.math.ceil
 
 sealed class Message {
 
@@ -13,51 +16,73 @@ sealed class Message {
 
     fun write(outputStream: OutputStream) = outputStream.write(bytes)
 
-    fun read(inputStream: InputStream): Message {
-        val length = readBytes(inputStream, 4).toInt()
-        if (length == 0) {
-            return KeepAlive
-        }
-        val bytes = readBytes(inputStream, length)
-        return when (bytes[0].toInt()) {
-            0 -> Choke
-            1 -> Unchoke
-            2 -> Interested
-            3 -> NotInterested
-            4 -> when (length) {
-                5 -> Have(bytes.sliceArray(1..4).toInt())
-                else -> throw PeerProtocolException("Incorrect length for 'have' message")
+    companion object {
+
+        fun read(inputStream: InputStream, maxDataLength: Int, pieceCount: Int): Message {
+            val length = inputStream.readBytesOrFail(4).toInt()
+            if (length == 0) {
+                return KeepAlive
             }
-            5 -> BitField(BitArray.wrap(bytes.sliceArray(1 until bytes.size)))
-            6 -> when (length) {
-                13 -> Request(
-                        pieceIndex = bytes.sliceArray(1..4).toInt(),
-                        offset = bytes.sliceArray(5..8).toInt(),
-                        length = bytes.sliceArray(9..12).toInt()
-                )
-                else -> throw PeerProtocolException("Incorrect length for 'request' message")
+            val id = inputStream.readByteOrFail()
+            return when (id) {
+                0 -> when (length) {
+                    1 -> Choke
+                    else -> throw IncorrectLengthException("choke", length, 1)
+                }
+                1 -> when (length) {
+                    1 -> Unchoke
+                    else -> throw IncorrectLengthException("unchoke", length, 1)
+                }
+                2 -> when (length) {
+                    1 -> Interested
+                    else -> throw IncorrectLengthException("interested", length, 1)
+                }
+                3 -> when (length) {
+                    1 -> NotInterested
+                    else -> throw IncorrectLengthException("not interested", length, 1)
+                }
+                4 -> when (length) {
+                    5 -> Have(inputStream.readBytesOrFail(4).toInt())
+                    else -> throw IncorrectLengthException("have", length, 5)
+                }
+                5 -> {
+                    val expectedLength = 1 + ceil(pieceCount / 8f).toInt()
+                    when (length) {
+                        expectedLength -> BitField(BitArray.wrap(inputStream.readBytesOrFail(length - 1)))
+                        else -> throw IncorrectLengthException("bitfield", length, expectedLength)
+                    }
+                }
+                6 -> when (length) {
+                    13 -> Request(
+                            pieceIndex = inputStream.readBytesOrFail(4).toInt(),
+                            offset = inputStream.readBytesOrFail(4).toInt(),
+                            length = inputStream.readBytesOrFail(4).toInt()
+                    )
+                    else -> throw IncorrectLengthException("request", length, 13)
+                }
+                7 -> when (length) {
+                    in 9..maxDataLength + 9 -> Piece(
+                            pieceIndex = inputStream.readBytesOrFail(4).toInt(),
+                            offset = inputStream.readBytesOrFail(4).toInt(),
+                            data = inputStream.readBytesOrFail(length - 9)
+                    )
+                    in 0..8 -> throw IncorrectLengthException("piece", length)
+                    else -> throw PieceMessageTooLongException(length, maxDataLength + 9)
+                }
+                8 -> when (length) {
+                    13 -> Cancel(
+                            pieceIndex = inputStream.readBytesOrFail(4).toInt(),
+                            offset = inputStream.readBytesOrFail(4).toInt(),
+                            length = inputStream.readBytesOrFail(4).toInt()
+                    )
+                    else -> throw IncorrectLengthException("cancel", length, 13)
+                }
+                9 -> when (length) {
+                    3 -> Port(inputStream.readBytesOrFail(2).toShort())
+                    else -> throw IncorrectLengthException("port", length, 3)
+                }
+                else -> throw UnrecognizedMessageException(id, length)
             }
-            7 -> when {
-                length >= 9 -> Piece(
-                        pieceIndex = bytes.sliceArray(1..4).toInt(),
-                        offset = bytes.sliceArray(5..8).toInt(),
-                        data = bytes.sliceArray(9 until bytes.size)
-                )
-                else -> throw PeerProtocolException("'piece' message too short")
-            }
-            8 -> when (length) {
-                13 -> Cancel(
-                        pieceIndex = bytes.sliceArray(1..4).toInt(),
-                        offset = bytes.sliceArray(5..8).toInt(),
-                        length = bytes.sliceArray(9..12).toInt()
-                )
-                else -> throw PeerProtocolException("Incorrect length for 'cancel' message")
-            }
-            9 -> when (length) {
-                3 -> Port(bytes.sliceArray(1..2).toShort())
-                else -> throw PeerProtocolException("Incorrect length for 'port' message")
-            }
-            else -> throw PeerProtocolException("Unrecognized message of length $length with id ${bytes[0].toInt()}")
         }
     }
 }
@@ -162,17 +187,4 @@ class Port(val port: Short) : Message() {
         this[4] = 9
         System.arraycopy(port.toByteArray(), 0, this, 5, 4)
     }
-}
-
-fun readBytes(inputStream: InputStream, n: Int): ByteArray {
-    val bytes = ByteArray(n)
-    var bytesRead = 0
-    while (bytesRead < n) {
-        val readResult = inputStream.read(bytes, bytesRead, n - bytesRead)
-        when (readResult) {
-            -1 -> throw PeerProtocolException("Unexpected end of stream")
-            else -> bytesRead += readResult
-        }
-    }
-    return bytes
 }

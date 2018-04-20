@@ -1,5 +1,8 @@
 package ktorrent.bencoding
 
+import ktorrent.utils.EndOfStreamException
+import ktorrent.utils.readByteOrFail
+import ktorrent.utils.readBytesOrFail
 import java.io.InputStream
 
 class BReader(private val inputStream: InputStream) {
@@ -54,24 +57,19 @@ class BReader(private val inputStream: InputStream) {
 
     private fun readByte(): Char {
         ++position
-        val readResult = inputStream.read()
-        when (readResult) {
-            -1 -> throw InvalidBEncodingException("Unexpected end of stream")
-            else -> return readResult.toChar()
+        return try {
+            inputStream.readByteOrFail().toChar()
+        } catch (e: EndOfStreamException) {
+            throw InvalidBEncodingException(e)
         }
     }
 
     private fun readBytes(n: Int): ByteArray {
-        val bytes = ByteArray(n)
-        var bytesRead = 0
-        while (bytesRead < n) {
-            val readResult = inputStream.read(bytes, bytesRead, n - bytesRead)
-            when (readResult) {
-                -1 -> throw InvalidBEncodingException("Unexpected end of stream")
-                else -> bytesRead += readResult
-            }
-        }
         position += n
-        return bytes
+        return try {
+            inputStream.readBytesOrFail(n)
+        } catch (e: EndOfStreamException) {
+            throw InvalidBEncodingException(e)
+        }
     }
 }

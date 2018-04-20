@@ -1,5 +1,8 @@
 package ktorrent.protocol.peer
 
+import ktorrent.utils.EndOfStreamException
+import ktorrent.utils.readByteOrFail
+import ktorrent.utils.readBytesOrFail
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -19,16 +22,15 @@ class Handshake(val infoHash: ByteArray, val peerId: ByteArray) {
     companion object {
 
         fun read(inputStream: InputStream): Handshake {
-            val length = inputStream.read()
-            if (length == -1) {
-                throw PeerProtocolException("Unexpected end of stream")
-            }
-            val protocol = String(readBytes(inputStream, length), Charsets.UTF_8)
+            val length = inputStream.readByteOrFail()
+            val protocol = String(inputStream.readBytesOrFail(length), Charsets.UTF_8)
             if (protocol != "BitTorrent protocol") {
-                throw PeerProtocolException("Incompatible protocol '$protocol'")
+                throw IncompatibleProtocolException(protocol)
             }
-            readBytes(inputStream, 8)
-            return Handshake(readBytes(inputStream, 20), readBytes(inputStream, 20))
+            if (inputStream.skip(8) < 8) {
+                throw EndOfStreamException
+            }
+            return Handshake(inputStream.readBytesOrFail(20), inputStream.readBytesOrFail(20))
         }
     }
 }
