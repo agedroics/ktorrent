@@ -1,25 +1,23 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    base
-    kotlin("jvm") version "1.2.40" apply false
+    application
+    kotlin("jvm") version "1.2.40"
 }
 
-allprojects {
-    group = "ktorrent"
-    version = "1.0"
+application {
+    mainClassName = "ktorrent.TestKt"
+}
 
-    repositories {
-        jcenter()
-    }
+repositories {
+    jcenter()
+}
 
-    tasks.withType<KotlinCompile> {
-        kotlinOptions.jvmTarget = "1.8"
-    }
+tasks.withType<KotlinCompile> {
+    kotlinOptions.jvmTarget = "1.8"
 }
 
 dependencies {
-    subprojects.forEach {
-        archives(it)
-    }
+    compile(kotlin("stdlib-jdk8"))
+    testCompile(kotlin("test-junit"))
 }
