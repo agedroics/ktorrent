@@ -39,8 +39,7 @@ sealed class Info(val pieceLength: Int,
                         pieceLength = pieceLength,
                         pieces = pieces,
                         private = private,
-                        directoryName = name
-                                ?: throw MappingException("Failed to read directory name"),
+                        directoryName = name ?: throw MappingException("Failed to read directory name"),
                         files = (dictionary["files"] as? BList)?.map {
                             (it as? BDictionary)?.let { FileInfo.read(it) }
                                     ?: throw MappingException("Failed to read file list")
