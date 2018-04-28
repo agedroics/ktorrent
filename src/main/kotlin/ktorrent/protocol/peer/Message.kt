@@ -127,13 +127,13 @@ class BitField(val bitArray: BitArray) : Message() {
 
     override val bytes: ByteArray
 
-    get() = bitArray.byteArray.let {
-        ByteArray(5 + it.size).apply {
-            System.arraycopy((1 + it.size).toByteArray(), 0, this, 0, 4)
-            this[4] = 5
-            System.arraycopy(it, 0, this, 5, it.size)
+        get() = bitArray.byteArray.let {
+            ByteArray(5 + it.size).apply {
+                System.arraycopy((1 + it.size).toByteArray(), 0, this, 0, 4)
+                this[4] = 5
+                System.arraycopy(it, 0, this, 5, it.size)
+            }
         }
-    }
 }
 
 class Request(val pieceIndex: Int, val offset: Int, length: Int) : Message() {

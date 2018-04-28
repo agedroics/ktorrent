@@ -12,9 +12,24 @@ class BitArray : Collection<Boolean> {
 
     val byteArray: ByteArray
 
-    constructor(size: Int) {
+    constructor(size: Int, fillWithTrues: Boolean = false) {
         this.size = size
         byteArray = ByteArray(ceil(size / 8f).toInt())
+        if (fillWithTrues) {
+            fillWith(true)
+        }
+    }
+
+    fun fillWith(value: Boolean) {
+        (0 until byteArray.size).forEach {
+            byteArray[it] = when (value) {
+                true -> when (it) {
+                    byteArray.size - 1 -> (0xFF ushr byteArray.size % 8).inv().toByte()
+                    else -> 0xFF.toByte()
+                }
+                false -> 0
+            }
+        }
     }
 
     private constructor(byteArray: ByteArray, size: Int) {

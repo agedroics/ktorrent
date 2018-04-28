@@ -6,7 +6,7 @@ import java.io.OutputStream
 import java.nio.file.Path
 import java.nio.file.Paths
 
-class FileInfo(val length: Long, val path: Path) : BEncodable {
+data class FileInfo(val length: Long, val path: Path) : BEncodable {
 
     override fun write(outputStream: OutputStream) = BDictionary(
             "length" to BInteger(length),
