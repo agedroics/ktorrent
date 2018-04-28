@@ -2,7 +2,10 @@ package ktorrent.utils
 
 import java.io.InputStream
 
-object EndOfStreamException : RuntimeException("Unexpected end of stream")
+object EndOfStreamException : RuntimeException("Unexpected end of stream") {
+
+    override fun fillInStackTrace() = this
+}
 
 fun InputStream.readByteOrFail(): Int {
     val readResult = read()

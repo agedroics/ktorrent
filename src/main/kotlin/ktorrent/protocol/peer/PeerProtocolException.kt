@@ -1,6 +1,9 @@
 package ktorrent.protocol.peer
 
-sealed class PeerProtocolException(message: String) : RuntimeException(message)
+sealed class PeerProtocolException(message: String) : RuntimeException(message) {
+
+    override fun fillInStackTrace() = this
+}
 
 class IncompatibleProtocolException(protocol: String) : PeerProtocolException("Incompatible protocol '$protocol'")
 

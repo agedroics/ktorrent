@@ -6,12 +6,15 @@ import java.nio.file.Path
 
 class TorrentFile(rootDirectory: Path,
                   val path: Path,
-                  val length: Long,
+                  val offset: Long = 0,
+                  val length: Long = rootDirectory.resolve(path).toFile().length(),
                   ignored: Boolean = false) {
 
     val ignored = AtomicObservable(ignored)
 
     val completed = AtomicObservable(0L)
 
-    val file by lazy { RandomAccessFile(rootDirectory.resolve(path).toFile(), "rw") }
+    val absolutePath: Path = rootDirectory.resolve(path)
+
+    val file by lazy { RandomAccessFile(absolutePath.toFile(), "rw") }
 }

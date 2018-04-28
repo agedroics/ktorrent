@@ -11,6 +11,8 @@ class AtomicObservable<T>(initialValue: T) {
     @Synchronized fun update(updater: (T) -> T) {
         val oldValue = value
         value = updater(value)
-        observers.forEach { it(oldValue, value) }
+        if (oldValue != value) {
+            observers.forEach { it(oldValue, value) }
+        }
     }
 }

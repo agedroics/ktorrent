@@ -6,9 +6,10 @@ import ktorrent.protocol.torrent.MultiFileInfo
 import ktorrent.protocol.torrent.SingleFileInfo
 import ktorrent.utils.AtomicObservable
 import ktorrent.utils.BitArray
+import ktorrent.utils.EndOfStreamException
 import ktorrent.utils.sha1
 import java.io.File
-import java.io.IOException
+import java.io.FileNotFoundException
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
@@ -25,11 +26,16 @@ class FileStore {
     val totalLength: AtomicObservable<Long>
     val completed = AtomicObservable(0L)
 
-    constructor(rootDirectory: Path, info: Info, pieceMap: BitArray? = null, ignoredFiles: Set<FileInfo> = emptySet()) {
+    constructor(rootDirectory: Path,
+                info: Info,
+                pieceMap: BitArray? = null,
+                ignoredFiles: Set<FileInfo> = emptySet(),
+                vararg progressObservers: (oldValue: Long, newValue: Long) -> Unit) {
+
         this.info = info
         when (info) {
             is SingleFileInfo -> {
-                val torrentFile = TorrentFile(rootDirectory, Paths.get(info.name), info.length)
+                val torrentFile = TorrentFile(rootDirectory, Paths.get(info.name), 0, info.length)
                 torrentFile.completed.observers += { old, new -> completed.update { it + new - old } }
                 files[0] = torrentFile
                 totalLength = AtomicObservable(torrentFile.length)
@@ -39,7 +45,7 @@ class FileStore {
                 val directory = rootDirectory.resolve(info.directoryName)
                 totalLength = AtomicObservable(0)
                 info.files.forEach {
-                    val torrentFile = TorrentFile(directory, it.path, it.length, ignoredFiles.contains(it))
+                    val torrentFile = TorrentFile(directory, it.path, offset, it.length, ignoredFiles.contains(it))
                     torrentFile.completed.observers += { old, new -> completed.update { it + new - old } }
                     if (!torrentFile.ignored.value) {
                         totalLength.update { it + torrentFile.length }
@@ -49,69 +55,77 @@ class FileStore {
                 }
             }
         }
+        completed.observers += progressObservers
         when (pieceMap) {
             null -> {
                 this.pieceMap = BitArray(info.pieces.size)
-                // recheck()
+                recheck()
             }
             else -> this.pieceMap = pieceMap
         }
     }
 
-    constructor(file: File, pieceLength: Int, private: Boolean? = null) {
+    constructor(file: File,
+                pieceLength: Int,
+                private: Boolean? = null,
+                vararg progressObservers: (oldValue: Long, newValue: Long) -> Unit) {
+
         val path = file.toPath()
-        val torrentFile = TorrentFile(path.parent, path.fileName, file.length())
-        files[0] = torrentFile
+        val torrentFile = TorrentFile(path.parent, path.fileName)
         totalLength = AtomicObservable(torrentFile.length)
-        val pieceCount = ceil(totalLength.value / pieceLength.toFloat()).toInt()
-        val pieces = Array(pieceCount) {
-            val bytesToRead = when (it) {
-                pieceCount - 1 -> (totalLength.value - it * pieceLength.toLong()).toInt()
-                else -> pieceLength
-            }
-            read(it, 0, bytesToRead, pieceLength).sha1()
-        }
+        torrentFile.completed.update { torrentFile.length }
+        torrentFile.completed.observers += { old, new -> completed.update { it + new - old } }
+        files[0] = torrentFile
+        completed.observers += progressObservers
         info = SingleFileInfo(
                 pieceLength = pieceLength,
-                pieces = pieces,
+                pieces = calculatePieces(pieceLength),
                 private = private,
                 name = path.fileName.toString(),
                 length = torrentFile.length
         )
-        pieceMap = BitArray(pieceCount, true)
+        pieceMap = BitArray(info.pieces.size, true)
     }
 
     constructor(rootDirectory: Path,
                 files: List<Path>,
                 pieceLength: Int,
                 private: Boolean? = null,
-                directoryName: String) {
+                directoryName: String,
+                vararg progressObservers: (oldValue: Long, newValue: Long) -> Unit) {
 
         var offset = 0L
         totalLength = AtomicObservable(0)
         files.forEach {
-            val length = it.toFile().length()
-            val torrentFile = TorrentFile(rootDirectory, it, length)
-            this.files[offset] = torrentFile
+            val torrentFile = TorrentFile(rootDirectory, it, offset)
             totalLength.update { it + torrentFile.length }
+            torrentFile.completed.update { torrentFile.length }
+            torrentFile.completed.observers += { old, new -> completed.update { it + new - old } }
+            this.files[offset] = torrentFile
             offset += torrentFile.length
         }
-        val pieceCount = ceil(totalLength.value / pieceLength.toFloat()).toInt()
-        val pieces = Array(pieceCount) {
-            val bytesToRead = when (it) {
-                pieceCount - 1 -> (totalLength.value - it * pieceLength.toLong()).toInt()
-                else -> pieceLength
-            }
-            read(it, 0, bytesToRead, pieceLength).sha1()
-        }
+        completed.observers += progressObservers
         info = MultiFileInfo(
                 pieceLength = pieceLength,
-                pieces = pieces,
+                pieces = calculatePieces(pieceLength),
                 private = private,
                 directoryName = directoryName,
                 files = this.files.values.map { FileInfo(it.length, it.path) }
         )
-        pieceMap = BitArray(pieceCount, true)
+        pieceMap = BitArray(info.pieces.size, true)
+    }
+
+    private fun calculatePieces(pieceLength: Int): Array<ByteArray> {
+        val pieceCount = ceil(totalLength.value / pieceLength.toFloat()).toInt()
+        return Array(pieceCount) {
+            val bytesToRead = when (it) {
+                pieceCount - 1 -> (totalLength.value - it * pieceLength.toLong()).toInt()
+                else -> pieceLength
+            }
+            val piece = read(it, 0, bytesToRead, pieceLength).sha1()
+            completed.update { it + bytesToRead }
+            piece
+        }
     }
 
     fun read(pieceIndex: Int, offset: Int, length: Int, pieceLength: Int = info.pieceLength) = ByteArray(length).also {
@@ -122,7 +136,9 @@ class FileStore {
             val readAmount = min(fileStart + torrentFile.length - actualOffset, length.toLong() - bytesRead).toInt()
             torrentFile.file.apply {
                 seek(actualOffset - fileStart)
-                read(it, bytesRead, readAmount)
+                if (read(it, bytesRead, readAmount) == -1) {
+                    throw EndOfStreamException
+                }
             }
             bytesRead += readAmount
             actualOffset += readAmount
@@ -141,10 +157,18 @@ class FileStore {
         do {
             val (fileStart, torrentFile) = files.floorEntry(offset)
             val writeAmount = min(fileStart + torrentFile.length - offset, data.size.toLong() - bytesWritten).toInt()
-            torrentFile.file.apply {
+            try {
+                torrentFile.file
+            } catch (e: FileNotFoundException) {
+                torrentFile.absolutePath.parent.toFile().mkdirs()
+                torrentFile.file
+            }.apply {
                 seek(offset - fileStart)
                 write(data, bytesWritten, writeAmount)
-                torrentFile.completed.update { it + writeAmount }
+            }
+            torrentFile.completed.update { it + writeAmount }
+            if (torrentFile.completed.value == torrentFile.length) {
+                torrentFile.file.fd.sync()
             }
             bytesWritten += writeAmount
             offset += writeAmount
@@ -156,6 +180,9 @@ class FileStore {
         pieceMap.fillWith(false)
         files.values.forEach { it.completed.update { 0 } }
         for ((fileStart, torrentFile) in files.entries) {
+            if (torrentFile.ignored.value || !torrentFile.absolutePath.toFile().exists()) {
+                continue
+            }
             try {
                 val fileEnd = fileStart + torrentFile.length
                 ((fileStart / info.pieceLength).toInt() until ceil(fileEnd / info.pieceLength.toFloat()).toInt()).forEach {
@@ -172,7 +199,9 @@ class FileStore {
                         }
                     }
                 }
-            } catch (e: IOException) {
+            } catch (e: EndOfStreamException) {
+                continue
+            } catch (e: FileNotFoundException) {
                 continue
             }
         }
