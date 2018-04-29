@@ -1,7 +1,7 @@
-package ktorrent.protocol.torrent
+package ktorrent.protocol.info
 
 import ktorrent.bencoding.*
-import ktorrent.protocol.MappingException
+import ktorrent.utils.MappingException
 import java.io.OutputStream
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -15,7 +15,7 @@ data class FileInfo(val length: Long, val path: Path) : BEncodable {
 
     companion object {
 
-        internal fun read(dictionary: BDictionary) = FileInfo(
+        fun read(dictionary: BDictionary) = FileInfo(
                 length = (dictionary["length"] as? BInteger)?.value
                         ?: throw MappingException("Failed to read file length"),
                 path = (dictionary["path"] as? BList)?.map {

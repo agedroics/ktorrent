@@ -1,7 +1,6 @@
 package ktorrent.protocol.tracker
 
 import ktorrent.utils.urlEncode
-import java.io.BufferedInputStream
 import java.net.InetAddress
 import java.net.URL
 import java.net.URLEncoder
@@ -46,6 +45,6 @@ class TrackerRequest(val infoHash: ByteArray,
             announce.ref?.let { append('#').append(it) }
         }.let { URL(it.toString()) }
 
-        return url.openStream().use { TrackerResponse.read(BufferedInputStream(it)) }
+        return url.openStream().use { TrackerResponse.read(it) }
     }
 }

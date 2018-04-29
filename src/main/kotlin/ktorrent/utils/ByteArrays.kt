@@ -29,9 +29,13 @@ fun Int.toByteArray(): ByteArray = ByteBuffer.allocate(4).putInt(this).array()
 
 private val hexDigits = "0123456789ABCDEF"
 
-fun ByteArray.toHexString() = StringBuilder(size * 2).apply {
-    this@toHexString.forEach {
-        append(hexDigits[it.toInt() ushr 4 and 0xF])
-        append(hexDigits[it.toInt() and 0xF])
-    }
-}.toString()
+fun ByteArray.toHexString() = CharArray(size * 2) { when (it % 2) {
+    0 -> hexDigits[this[it / 2].toInt() ushr 4 and 0xF]
+    else -> hexDigits[this[it / 2].toInt() and 0xF]
+} }.let { String(it) }
+
+fun String.fromHexString() = ByteArray(length / 2) {
+    val fst = this[it * 2].let { if (it in '0'..'9') it - '0' else it - 'A' + 10 }
+    val snd = this[it * 2 + 1].let { if (it in '0'..'9') it - '0' else it - 'A' + 10 }
+    ((fst shl 4) or snd).toByte()
+}

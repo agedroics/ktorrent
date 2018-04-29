@@ -1,4 +1,4 @@
-package ktorrent.protocol
+package ktorrent.utils
 
 class MappingException : RuntimeException {
 

@@ -2,7 +2,7 @@ package ktorrent.utils
 
 class AtomicObservable<T>(initialValue: T) {
 
-    val observers: MutableSet<(oldValue: T, newValue: T) -> Unit> = mutableSetOf()
+    val observers: MutableSet<Observer<T>> = mutableSetOf()
 
     @Volatile var value = initialValue
 
@@ -16,3 +16,5 @@ class AtomicObservable<T>(initialValue: T) {
         }
     }
 }
+
+typealias Observer<T> = (oldValue: T, newValue: T) -> Unit

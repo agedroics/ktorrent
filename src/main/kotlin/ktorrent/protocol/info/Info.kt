@@ -1,7 +1,7 @@
-package ktorrent.protocol.torrent
+package ktorrent.protocol.info
 
 import ktorrent.bencoding.*
-import ktorrent.protocol.MappingException
+import ktorrent.utils.MappingException
 import ktorrent.utils.splitArray
 import java.io.OutputStream
 
@@ -26,7 +26,7 @@ sealed class Info(val pieceLength: Int,
 
     companion object {
 
-        internal fun read(dictionary: BDictionary): Info {
+        fun read(dictionary: BDictionary): Info {
             val pieceLength = (dictionary["piece length"] as? BInteger)?.value?.toInt()
                     ?: throw MappingException("Failed to read piece length")
             val pieces = (dictionary["pieces"] as? BByteString)?.value?.splitArray(20)

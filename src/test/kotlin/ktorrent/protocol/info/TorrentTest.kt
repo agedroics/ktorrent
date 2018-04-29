@@ -1,6 +1,6 @@
-package ktorrent.protocol.torrent
+package ktorrent.protocol.info
 
-import ktorrent.utils.toHexString
+import ktorrent.protocol.Torrent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

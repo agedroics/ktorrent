@@ -1,11 +1,12 @@
 package ktorrent.protocol.tracker
 
 import ktorrent.bencoding.*
-import ktorrent.protocol.MappingException
+import ktorrent.utils.MappingException
 import ktorrent.utils.split
 import ktorrent.utils.toShort
 import java.io.InputStream
 import java.net.Inet4Address
+import java.net.InetSocketAddress
 
 sealed class TrackerResponse {
 
@@ -33,8 +34,10 @@ sealed class TrackerResponse {
                                 }
                                 is BByteString -> it.value.split(6).map {
                                     Peer(
-                                            ip = Inet4Address.getByAddress(it.sliceArray(0 until 4)),
-                                            port = it.sliceArray(4 until 6).toShort()
+                                            address = InetSocketAddress(
+                                                    Inet4Address.getByAddress(it.sliceArray(0 until 4)),
+                                                    it.sliceArray(4 until 6).toShort().toInt()
+                                            )
                                     )
                                 }
                                 else -> throw MappingException("Failed to read peer list")
