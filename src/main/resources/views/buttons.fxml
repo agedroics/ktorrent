@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.HBox?>
+<HBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="ktorrent.ui.controller.ButtonsController">
+
+    <Button styleClass="icon-button" onAction="#onAdd">
+        <graphic>
+            <Label text="&#xf067;"/>
+        </graphic>
+
+        <tooltip>
+            <Tooltip text="%add"/>
+        </tooltip>
+    </Button>
+
+    <Button styleClass="icon-button" onAction="#onCreate">
+        <graphic>
+            <Label text="&#xf15b;"/>
+        </graphic>
+
+        <tooltip>
+            <Tooltip text="%create"/>
+        </tooltip>
+    </Button>
+
+    <Separator orientation="VERTICAL"/>
+
+    <Button styleClass="icon-button" onAction="#onRemove">
+        <graphic>
+            <Label text="&#xf1f8;"/>
+        </graphic>
+
+        <tooltip>
+            <Tooltip text="%remove"/>
+        </tooltip>
+    </Button>
+
+    <Separator orientation="VERTICAL"/>
+
+    <Button styleClass="icon-button" onAction="#onStart">
+        <graphic>
+            <Label text="&#xf04b;"/>
+        </graphic>
+
+        <tooltip>
+            <Tooltip text="%start"/>
+        </tooltip>
+    </Button>
+
+    <Button styleClass="icon-button" onAction="#onStop">
+        <graphic>
+            <Label text="&#xf04d;"/>
+        </graphic>
+
+        <tooltip>
+            <Tooltip text="%stop"/>
+        </tooltip>
+    </Button>
+</HBox>

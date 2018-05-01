@@ -4,8 +4,8 @@ import ktorrent.protocol.info.FileInfo
 import ktorrent.protocol.info.Info
 import ktorrent.protocol.info.MultiFileInfo
 import ktorrent.protocol.info.SingleFileInfo
+import ktorrent.utils.AtomicObservable
 import ktorrent.utils.EndOfStreamException
-import ktorrent.utils.Observer
 import ktorrent.utils.sha1
 import java.io.FileNotFoundException
 import java.nio.file.Path
@@ -69,10 +69,10 @@ class VirtualFile(val offsetMap: TreeMap<Long, out PhysicalFile>) {
         } while (bytesWritten < data.size)
     }
 
-    inline fun generateInfo(pieceLength: Int,
-                            directoryName: String,
-                            private: Boolean? = null,
-                            observer: Observer<Double> = { _, _ -> }): Info {
+    fun generateInfo(pieceLength: Int,
+                     directoryName: String,
+                     private: Boolean? = null,
+                     progress: AtomicObservable<Double>): Info {
 
         val pieceCount = ceil(length / pieceLength.toFloat()).toInt()
         val pieces = Array(pieceCount) { pieceIndex ->
@@ -82,7 +82,7 @@ class VirtualFile(val offsetMap: TreeMap<Long, out PhysicalFile>) {
                 else -> pieceLength
             }
             read(offset, bytesToRead).sha1().also {
-                observer(0.0, (pieceIndex.toDouble() + 1) / pieceCount)
+                progress.update { (pieceIndex.toDouble() + 1) / pieceCount }
             }
         }
         return when (offsetMap.values.size) {

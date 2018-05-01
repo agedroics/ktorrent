@@ -7,11 +7,12 @@ class TorrentFile(rootDirectory: Path,
                   path: Path,
                   offset: Long,
                   length: Long,
-                  completed: Long,
+                  val pieces: Int,
+                  done: Long,
                   ignored: Boolean = false)
 
     : PhysicalFile(rootDirectory, path, offset, length) {
 
-    val completed = AtomicObservable(completed)
+    val done = AtomicObservable(done)
     val ignored = AtomicObservable(ignored)
 }

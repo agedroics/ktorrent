@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.cell.PropertyValueFactory?>
+<?import javafx.scene.control.*?>
+<?import ktorrent.ui.component.BetterTableView?>
+<BetterTableView xmlns="http://javafx.com/javafx"
+                 xmlns:fx="http://javafx.com/fxml"
+                 fx:controller="ktorrent.ui.controller.TorrentsController"
+                 fx:id="table">
+
+    <columns>
+        <TableColumn text="%name" cellFactory="${controller.stringCellFactory}">
+            <cellValueFactory>
+                <PropertyValueFactory property="name"/>
+            </cellValueFactory>
+        </TableColumn>
+
+        <TableColumn text="%size" cellFactory="${controller.sizeCellFactory}" styleClass="align-right">
+            <cellValueFactory>
+                <PropertyValueFactory property="size"/>
+            </cellValueFactory>
+        </TableColumn>
+
+        <TableColumn text="%done" cellFactory="${controller.sizeCellFactory}" styleClass="align-right">
+            <cellValueFactory>
+                <PropertyValueFactory property="done"/>
+            </cellValueFactory>
+        </TableColumn>
+    </columns>
+
+    <rowContextMenu>
+        <ContextMenu>
+            <items>
+                <MenuItem text="%open" onAction="#onOpen"
+                          disable="${controller.selectedTorrent.multiFile}"/>
+                <MenuItem text="%openContainingFolder" onAction="#onOpenContainingFolder"/>
+                <SeparatorMenuItem/>
+                <MenuItem text="%recheck" onAction="#onRecheck"/>
+                <SeparatorMenuItem/>
+                <MenuItem text="%removeAndDeleteData" onAction="#onRemoveAndDeleteData"/>
+            </items>
+        </ContextMenu>
+    </rowContextMenu>
+</BetterTableView>

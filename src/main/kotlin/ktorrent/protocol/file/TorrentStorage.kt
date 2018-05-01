@@ -17,14 +17,16 @@ import kotlin.math.min
 
 class TorrentStorage(val rootDirectory: Path,
                      info: Info,
-                     ignoredFiles: Set<Path> = emptySet(),
-                     val pieceMap: BitArray) {
+                     ignoredFiles: Set<Path>,
+                     val pieceMap: BitArray,
+                     state: TorrentState) {
 
     private val pieceLength = info.pieceLength
     private val pieces = info.pieces
 
     val length = AtomicObservable(0L)
-    val completed = AtomicObservable(0L)
+    val done = AtomicObservable(0L)
+    val state = AtomicObservable(state)
 
     private val virtualFile = TreeMap<Long, TorrentFile>().apply {
         when (info) {
@@ -34,11 +36,12 @@ class TorrentStorage(val rootDirectory: Path,
                         path = Paths.get(info.name),
                         offset = 0,
                         length = info.length,
-                        completed = calculateCompletion(0, info.length)
+                        pieces = pieces.size,
+                        done = calculateCompletion(0, info.length)
                 )
                 length.update { file.length }
-                file.completed.observers += { old, new -> completed.update { it + new - old } }
-                completed.update { file.completed.value }
+                file.done.listeners += { old, new -> done.update { it + new - old } }
+                done.update { file.done.value }
                 this[0] = file
             }
             is MultiFileInfo -> {
@@ -50,16 +53,32 @@ class TorrentStorage(val rootDirectory: Path,
                             path = it.path,
                             offset = offset,
                             length = it.length,
-                            completed = calculateCompletion(offset, it.length),
+                            pieces = with(pieceRange(offset, it.length)) { last - first + 1 },
+                            done = calculateCompletion(offset, it.length),
                             ignored = ignoredFiles.contains(it.path)
                     )
+                    val doneListener = { old: Long, new: Long -> done.update { it + new - old } }
                     if (!file.ignored.value) {
                         length.update { it + file.length }
-                        file.completed.observers += { old, new -> completed.update { it + new - old } }
+                        file.done.listeners += doneListener
                     }
-                    completed.update { it + file.completed.value }
+                    done.update { it + file.done.value }
                     this[offset] = file
                     offset += file.length
+                    file.ignored.listeners += { _, value ->
+                        when (value) {
+                            true -> {
+                                file.done.listeners -= doneListener
+                                length.update { it - file.length }
+                                done.update { it - file.done.value }
+                            }
+                            false -> {
+                                file.done.listeners += doneListener
+                                length.update { it + file.length }
+                                done.update { it + file.done.value }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -89,47 +108,66 @@ class TorrentStorage(val rootDirectory: Path,
         else -> pieceLength
     }
 
-    fun read(pieceIndex: Int, offset: Int = 0, length: Int = pieceLength(pieceIndex) - offset) =
-            virtualFile.read(pieceIndex.toLong() * pieceLength + offset, length)
+    fun read(pieceIndex: Int, offset: Int = 0, length: Int = pieceLength(pieceIndex) - offset) = when (state.value) {
+        TorrentState.DOWNLOADING,
+        TorrentState.SEEDING,
+        TorrentState.CHECKING -> virtualFile.read(pieceIndex.toLong() * pieceLength + offset, length)
+        else -> throw IllegalStateException("Attempted to read data while in state ${state.value}")
+    }
 
     fun write(pieceIndex: Int, data: ByteArray) {
-        if (pieceMap[pieceIndex]) {
-            return
-        }
-        if (!Arrays.equals(pieces[pieceIndex], data.sha1())) {
-            throw HashMismatchException(pieceIndex)
-        }
-        virtualFile.write(pieceIndex.toLong() * pieceLength, data) { file, bytesWritten ->
-            file as TorrentFile
-            file.completed.update { it + bytesWritten }
-            if (file.completed.value == file.length) {
-                file.file.fd.sync()
+        when (state.value) {
+            TorrentState.DOWNLOADING -> {
+                if (!pieceMap[pieceIndex]) {
+                    return
+                }
+                if (!Arrays.equals(pieces[pieceIndex], data.sha1())) {
+                    throw HashMismatchException(pieceIndex)
+                }
+                virtualFile.write(pieceIndex.toLong() * pieceLength, data) { file, bytesWritten ->
+                    file as TorrentFile
+                    file.done.update { it + bytesWritten }
+                    if (file.done.value == file.length) {
+                        file.file.fd.sync()
+                    }
+                }
+                pieceMap[pieceIndex] = true
             }
+            else -> throw IllegalStateException("Attempted to write data while in state ${state.value}")
         }
-        pieceMap[pieceIndex] = true
     }
 
     fun recheck() {
-        pieceMap.fillWith(false)
-        files.forEach { it.completed.update { 0 } }
-        for (file in files) {
-            if (file.ignored.value || !file.absolutePath.toFile().exists()) {
-                continue
-            }
-            try {
-                pieceRange(file.offset, file.length).forEach {
-                    if (pieceMap[it] || Arrays.equals(pieces[it], read(it).sha1())) {
-                        val offset = it.toLong() * pieceLength
-                        val lengthCoverage = (min(file.offset + file.length, offset + pieceLength) - max(file.offset, offset)).toInt()
-                        file.completed.update { it + lengthCoverage }
-                        pieceMap[it] = true
+        when (state.value) {
+            TorrentState.STOPPED,
+            TorrentState.ERROR -> {
+                state.update { TorrentState.CHECKING }
+                pieceMap.fillWith(false)
+                files.forEach { it.done.update { 0 } }
+                for (file in files) {
+                    if (file.ignored.value || !file.absolutePath.toFile().exists()) {
+                        continue
+                    }
+                    try {
+                        pieceRange(file.offset, file.length).forEach {
+                            if (pieceMap[it] || Arrays.equals(pieces[it], read(it).sha1())) {
+                                val offset = it.toLong() * pieceLength
+                                val lengthCoverage = (min(file.offset + file.length, offset + pieceLength) - max(file.offset, offset)).toInt()
+                                file.done.update { it + lengthCoverage }
+                                pieceMap[it] = true
+                            }
+                        }
+                    } catch (e: EndOfStreamException) {
+                        continue
+                    } catch (e: FileNotFoundException) {
+                        continue
                     }
                 }
-            } catch (e: EndOfStreamException) {
-                continue
-            } catch (e: FileNotFoundException) {
-                continue
+                state.update { TorrentState.STOPPED }
             }
+            TorrentState.CHECKING -> throw IllegalStateException("Attempted to check torrent that is already being checked")
+            else -> throw IllegalStateException("Attempting to check torrent while in state ${state.value}")
         }
+
     }
 }

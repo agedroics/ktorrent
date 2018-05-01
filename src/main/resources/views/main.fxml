@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.BorderPane?>
+<?import ktorrent.ui.component.IconLabel?>
+<BorderPane xmlns="http://javafx.com/javafx/8.0.121"
+            xmlns:fx="http://javafx.com/fxml/1"
+            prefWidth="800" prefHeight="600">
+
+    <top>
+        <fx:include source="/views/buttons.fxml"/>
+    </top>
+
+    <center>
+        <SplitPane orientation="VERTICAL">
+            <fx:include source="/views/torrents.fxml" SplitPane.resizableWithParent="true"/>
+
+            <TabPane SplitPane.resizableWithParent="false">
+                <Tab closable="false">
+                    <graphic>
+                        <IconLabel icon="&#xf07b;" text="%files"/>
+                    </graphic>
+
+                    <fx:include source="/views/files.fxml"/>
+                </Tab>
+            </TabPane>
+        </SplitPane>
+    </center>
+</BorderPane>
