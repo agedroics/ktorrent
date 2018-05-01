@@ -20,11 +20,17 @@ class BetterTableView<T>() : TableView<T>() {
 
                 override fun updateItem(item: T?, empty: Boolean) {
                     super.updateItem(item, empty)
-                    item?.let {
-                        setContextMenu(rowContextMenu)
-                        setOnMouseClicked {
-                            if (it.clickCount == 2) {
-                                onRowDoubleClicked?.handle(it)
+                    when (item) {
+                        null -> {
+                            setContextMenu(null)
+                            setOnMouseClicked(null)
+                        }
+                        else -> {
+                            setContextMenu(rowContextMenu)
+                            setOnMouseClicked {
+                                if (it.clickCount == 2) {
+                                    onRowDoubleClicked?.handle(it)
+                                }
                             }
                         }
                     }
