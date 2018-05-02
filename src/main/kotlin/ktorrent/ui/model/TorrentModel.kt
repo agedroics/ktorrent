@@ -9,10 +9,12 @@ import ktorrent.ui.UIObservable
 
 class TorrentModel(val torrent: Torrent) {
 
-    val name = torrent.metaInfo.info.let {
-        when (it) {
-            is SingleFileInfo -> it.name
-            is MultiFileInfo -> it.directoryName
+    val isSingleFile = torrent.metaInfo.info is SingleFileInfo
+
+    val name = torrent.metaInfo.info.run {
+        when (this) {
+            is SingleFileInfo -> name
+            is MultiFileInfo -> directoryName
         }
     }
 

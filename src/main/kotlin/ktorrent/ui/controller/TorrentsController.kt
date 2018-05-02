@@ -39,7 +39,7 @@ class TorrentsController {
 
     fun onOpenContainingFolder() {
         getSelectedTorrent()?.let {
-            val directory = it.torrent.storage.rootDirectory.resolve(if (it.multiFile) it.torrent.name else "")
+            val directory = it.torrent.storage.rootDirectory.resolve(if (it.multiFile) it.name else "")
             Desktop.getDesktop().open(directory.toFile())
         }
     }

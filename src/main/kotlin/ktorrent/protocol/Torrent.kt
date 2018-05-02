@@ -4,8 +4,6 @@ import ktorrent.bencoding.*
 import ktorrent.protocol.file.TorrentState
 import ktorrent.protocol.file.TorrentStorage
 import ktorrent.protocol.info.MetaInfo
-import ktorrent.protocol.info.MultiFileInfo
-import ktorrent.protocol.info.SingleFileInfo
 import ktorrent.utils.BitArray
 import ktorrent.utils.MappingException
 import ktorrent.utils.fromHexString
@@ -21,12 +19,7 @@ class Torrent(val infoHash: ByteArray,
               rootDirectory: Path,
               ignoredFiles: Set<Path> = emptySet(),
               pieceMap: BitArray = BitArray(metaInfo.info.pieces.size),
-              state: TorrentState = TorrentState.STOPPED) {
-
-    val name = metaInfo.info.let { when (it) {
-        is SingleFileInfo -> it.name
-        is MultiFileInfo -> it.directoryName
-    } }
+              state: TorrentState = TorrentState.INACTIVE) {
 
     val storage = TorrentStorage(rootDirectory, metaInfo.info, ignoredFiles, pieceMap, state)
 

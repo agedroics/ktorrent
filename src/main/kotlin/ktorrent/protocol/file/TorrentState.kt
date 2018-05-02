@@ -2,8 +2,8 @@ package ktorrent.protocol.file
 
 enum class TorrentState {
 
-    STOPPED,
-    DOWNLOADING,
+    INACTIVE,
+    LEECHING,
     SEEDING,
     CHECKING,
     ERROR

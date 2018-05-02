@@ -48,7 +48,7 @@
                 <MenuItem text="%open" onAction="#onOpen"/>
                 <MenuItem text="%openContainingFolder" onAction="#onOpenContainingFolder"/>
                 <SeparatorMenuItem/>
-                <MenuItem text="%skip" onAction="#onSkip">
+                <MenuItem text="%skip" onAction="#onSkip" disable="${controller.selectedTorrent.singleFile}">
                     <graphic>
                         <Label text="&#xf00c;" visible="${controller.selectedFile.skip}"/>
                     </graphic>
