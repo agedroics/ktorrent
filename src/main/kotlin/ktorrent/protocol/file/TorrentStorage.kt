@@ -95,11 +95,13 @@ class TorrentStorage(val rootDirectory: Path,
         return if (pieceRange.first == pieceRange.last) {
             if (pieceMap[pieceRange.first]) length else 0
         } else {
-            pieceRange.filter { pieceMap[it] }.fold(0L) { completed, pieceIndex -> completed + when (pieceIndex) {
-                pieceRange.first -> pieceLength - (offset % pieceLength).toInt()
-                pieceRange.last -> (offset + length - pieceIndex.toLong() * pieceLength).toInt()
-                else -> pieceLength
-            } }
+            pieceRange.filter { pieceMap[it] }.fold(0L) { completed, pieceIndex ->
+                completed + when (pieceIndex) {
+                    pieceRange.first -> pieceLength - (offset % pieceLength).toInt()
+                    pieceRange.last -> (offset + length - pieceIndex.toLong() * pieceLength).toInt()
+                    else -> pieceLength
+                }
+            }
         }
     }
 
@@ -110,7 +112,7 @@ class TorrentStorage(val rootDirectory: Path,
 
     fun read(pieceIndex: Int, offset: Int = 0, length: Int = pieceLength(pieceIndex) - offset) = when (state.value) {
         TorrentState.INACTIVE,
-        TorrentState.ERROR-> throw IllegalStateException("Attempted to read data while in state ${state.value}")
+        TorrentState.ERROR -> throw IllegalStateException("Attempted to read data while in state ${state.value}")
         else -> virtualFile.read(pieceIndex.toLong() * pieceLength + offset, length)
     }
 

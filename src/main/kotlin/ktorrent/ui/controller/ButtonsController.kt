@@ -5,10 +5,9 @@ import ktorrent.ui.Main
 
 class ButtonsController {
 
-    fun onAdd() {
-        val fileChooser = FileChooser()
-        fileChooser.extensionFilters += FileChooser.ExtensionFilter("Torrents", "*.torrent")
-        fileChooser.showOpenDialog(Main.stage)?.also {
+    fun onAdd() = with(FileChooser()) {
+        extensionFilters += FileChooser.ExtensionFilter("Torrents", "*.torrent")
+        showOpenDialog(Main.stage)?.also {
             MainController.processTorrentFile(it)
         }
     }

@@ -8,7 +8,7 @@ class AtomicObservable<T>(initialValue: T) {
 
         private set
 
-    @Synchronized fun update(updater: (T) -> T) {
+    fun update(updater: (T) -> T) = synchronized(this) {
         val oldValue = value
         value = updater(value)
         if (oldValue != value) {

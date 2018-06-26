@@ -5,7 +5,7 @@ version = "0.1"
 
 plugins {
     application
-    kotlin("jvm") version "1.2.41"
+    kotlin("jvm") version "1.2.50"
 }
 
 application {

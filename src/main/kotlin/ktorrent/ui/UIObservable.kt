@@ -13,9 +13,7 @@ class UIObservable<T>(private val observable: AtomicObservable<T>) : ReadOnlyPro
     var changesPending = false
 
     init {
-        observable.listeners += { _, _ ->
-            changesPending = true
-        }
+        observable.listeners += { _, _ -> changesPending = true }
         UIUpdater.observables += this
     }
 

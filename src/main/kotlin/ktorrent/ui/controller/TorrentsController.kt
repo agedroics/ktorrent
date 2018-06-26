@@ -47,9 +47,7 @@ class TorrentsController {
     fun onRemoveAndDeleteData() {
         getSelectedTorrent()?.apply {
             torrent.storage.files.forEach {
-                try {
-                    it.absolutePath.toFile().delete()
-                } catch (e: Exception) {}
+                it.absolutePath.toFile().delete()
             }
             MainController.removeSelectedTorrent()
         }
